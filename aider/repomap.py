@@ -68,11 +68,7 @@ class RepoMap:
         if self.verbose:
             self.io.tool_output(f"Repo-map: {num_tokens/1024:.1f} k-tokens")
 
-        if chat_files:
-            other = "other "
-        else:
-            other = ""
-
+        other = "other " if chat_files else ""
         if self.repo_content_prefix:
             repo_content = self.repo_content_prefix.format(other=other)
         else:
@@ -90,7 +86,7 @@ class RepoMap:
 
     def split_path(self, path):
         path = os.path.relpath(path, self.root)
-        return [path + ":"]
+        return [f"{path}:"]
 
     def load_tags_cache(self):
         path = Path(self.root) / self.TAGS_CACHE_DIR
@@ -165,16 +161,13 @@ class RepoMap:
 
             saw.add(kind)
 
-            result = Tag(
+            yield Tag(
                 rel_fname=rel_fname,
                 fname=fname,
                 name=node.text.decode("utf-8"),
                 kind=kind,
                 line=node.start_point[0],
             )
-
-            yield result
-
         if "ref" in saw:
             return
         if "def" not in saw:
@@ -255,7 +248,7 @@ class RepoMap:
         # dump(references)
 
         if not references:
-            references = dict((k, list(v)) for k, v in defines.items())
+            references = {k: list(v) for k, v in defines.items()}
 
         idents = set(defines.keys()).intersection(set(references.keys()))
 
@@ -268,9 +261,6 @@ class RepoMap:
                     # if referencer == definer:
                     #    continue
                     G.add_edge(referencer, definer, weight=num_refs, ident=ident)
-
-        if not references:
-            pass
 
         if personalization:
             pers_args = dict(personalization=personalization, dangling=personalization)
@@ -304,11 +294,11 @@ class RepoMap:
                 continue
             ranked_tags += list(definitions.get((fname, ident), []))
 
-        rel_other_fnames_without_tags = set(
+        rel_other_fnames_without_tags = {
             os.path.relpath(fname, self.root) for fname in other_fnames
-        )
+        }
 
-        fnames_already_included = set(rt[0] for rt in ranked_tags)
+        fnames_already_included = {rt[0] for rt in ranked_tags}
 
         top_rank = sorted([(rank, node) for (node, rank) in ranked.items()], reverse=True)
         for rank, fname in top_rank:
@@ -324,7 +314,7 @@ class RepoMap:
 
     def get_ranked_tags_map(self, chat_fnames, other_fnames=None):
         if not other_fnames:
-            other_fnames = list()
+            other_fnames = []
 
         ranked_tags = self.get_ranked_tags(chat_fnames, other_fnames)
         num_tags = len(ranked_tags)
@@ -402,16 +392,14 @@ def find_src_files(directory):
 
     src_files = []
     for root, dirs, files in os.walk(directory):
-        for file in files:
-            src_files.append(os.path.join(root, file))
+        src_files.extend(os.path.join(root, file) for file in files)
     return src_files
 
 
 def get_random_color():
     hue = random.random()
     r, g, b = [int(x * 255) for x in colorsys.hsv_to_rgb(hue, 1, 0.75)]
-    res = f"#{r:02x}{g:02x}{b:02x}"
-    return res
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 if __name__ == "__main__":

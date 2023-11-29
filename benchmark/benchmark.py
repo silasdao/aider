@@ -182,8 +182,7 @@ def plot_timing(df):
 
 def plot_outcomes(df, repeats, repeat_hi, repeat_lo, repeat_avg):
     tries = [df.groupby(["model", "edit_format"])["pass_rate_2"].mean()]
-    if True:
-        tries += [df.groupby(["model", "edit_format"])["pass_rate_1"].mean()]
+    tries += [df.groupby(["model", "edit_format"])["pass_rate_1"].mean()]
 
     plt.rcParams["hatch.linewidth"] = 0.5
     plt.rcParams["hatch.color"] = "#444444"
@@ -208,13 +207,14 @@ def plot_outcomes(df, repeats, repeat_hi, repeat_lo, repeat_avg):
         models = df.index
 
         for i, fmt in enumerate(formats):
-            if zorder > 1:
-                edge = dict(
+            edge = (
+                dict(
                     edgecolor="#ffffff",
                     linewidth=1.5,
                 )
-            else:
-                edge = dict()
+                if zorder > 1
+                else dict()
+            )
             if zorder == 2:
                 edge["label"] = fmt
 
@@ -337,7 +337,7 @@ def main(
     if repo.is_dirty():
         commit_hash += "-dirty"
 
-    if len(dirnames) > 1 and not (stats_only or diffs_only):
+    if len(dirnames) > 1 and not stats_only and not diffs_only:
         print("Only provide 1 dirname unless running with --stats or --diffs")
         return 1
 
@@ -367,8 +367,8 @@ def main(
 
     if clean and dirname.exists():
         print("Cleaning up and replacing", dirname)
-        dir_files = set(fn.name for fn in dirname.glob("*"))
-        original_files = set(fn.name for fn in ORIGINAL_DNAME.glob("*"))
+        dir_files = {fn.name for fn in dirname.glob("*")}
+        original_files = {fn.name for fn in ORIGINAL_DNAME.glob("*")}
         if dir_files != original_files:
             print("ERROR: will not delete dir that does not look like original tests", dirname)
             return
@@ -437,7 +437,7 @@ def main(
 def show_diffs(dirnames):
     dirnames = sorted(dirnames)
 
-    all_results = dict((dirname, load_results(dirname)) for dirname in dirnames)
+    all_results = {dirname: load_results(dirname) for dirname in dirnames}
     testcases = set()
     for results in all_results.values():
         testcases.update(result["testcase"] for result in results)
@@ -472,8 +472,10 @@ def show_diffs(dirnames):
 
 def load_results(dirname):
     dirname = Path(dirname)
-    all_results = [json.loads(fname.read_text()) for fname in dirname.glob("*/.aider.results.json")]
-    return all_results
+    return [
+        json.loads(fname.read_text())
+        for fname in dirname.glob("*/.aider.results.json")
+    ]
 
 
 def summarize_results(dirname):
@@ -531,10 +533,7 @@ def summarize_results(dirname):
 
     console.print(f"test-cases: {res.completed_tests}")
     for key, val in variants.items():
-        if len(val) > 1:
-            style = "red"
-        else:
-            style = None
+        style = "red" if len(val) > 1 else None
         val = ", ".join(map(str, val))
         setattr(res, key, val)
         console.print(f"{key}: {val}", style=style)
@@ -587,8 +586,7 @@ def run_test(
     results_fname = testdir / ".aider.results.json"
     if results_fname.exists():
         try:
-            res = json.loads(results_fname.read_text())
-            return res
+            return json.loads(results_fname.read_text())
         except JSONDecodeError:
             print(f"{results_fname} failed to parse, skipping")
             return
@@ -648,7 +646,7 @@ def run_test(
 
     dur = 0
     test_outcomes = []
-    for i in range(tries):
+    for _ in range(tries):
         start = time.time()
         if not no_aider:
             coder.run(with_message=instructions)

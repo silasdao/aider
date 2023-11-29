@@ -97,7 +97,7 @@ Two
 Hope you like it!
 """ % (source, source)
 
-        fence = ("<%s>" % source, "</%s>" % source)
+        fence = f"<{source}>", f"</{source}>"
 
         with self.assertRaises(ValueError) as cm:
             _edits = list(eb.find_original_update_blocks(edit, fence))
